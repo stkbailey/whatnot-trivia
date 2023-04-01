@@ -1,6 +1,7 @@
 # %%
 import datetime
 import time
+import logging
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,6 +12,8 @@ import datetime
 import pandas
 import pathlib
 from .models import Quiz, Answer
+
+logger = logging.getLogger(__name__)
 
 
 def start_driver(livestream_id: str):
@@ -39,7 +42,7 @@ def fetch_quiz():
     bank_fname = pathlib.Path("assets/question_bank.csv")
     if bank_fname.exists():
         bank_df = pandas.read_csv(bank_fname)
-        s = bank_df.sample(1).iloc[0]  
+        s = bank_df.sample(1).iloc[0]
         quiz = Quiz(
             question=s.question,
             answer=s.answer,
@@ -136,56 +139,3 @@ def scrape_chat(driver, chat: pandas.DataFrame):
         tmp = pandas.DataFrame([record])
         chat = pandas.concat([chat, tmp], axis=0, ignore_index=True)
     return chat
-
-
-# #%%
-# # Find the "div" element with the specified inline style attributes
-# target_div = driver.find_elements(by=By.XPATH, value="//div[@style='display: flex; width: 100%; align-items: flex-start; margin-bottom: 12px; border-radius: 4px;']")
-
-# # Print the text content of the target "div" element
-# print(f"Count elements {len(target_div)}")
-
-# print("Last Target div content:")
-# print(target_div[-1].text)
-
-
-# #%%
-
-# # Wait 5 seconds for the content to load
-# time.sleep(5)
-
-# # Get the entire body of the page
-# driver.
-# body_content = driver.find_element_by_tag_name("body").get_attribute("innerHTML")
-
-# # Save the content to a local file
-# with open("output.html", "w", encoding="utf-8") as f:
-#     f.write(body_content)
-
-# #%%
-# # Close the browser
-# driver.quit()
-
-# print("The content has been saved to output.html")
-
-
-# # def fetch_soup(livestream_id):
-# #     url =
-# #     response = requests.get(url)
-# #     return BeautifulSoup(response.text, "html.parser")
-
-
-# # if __name__ == "__main__":
-# #     from selenium import webdriver
-# #     from selenium.webdriver.common.keys import Keys
-# #     from selenium.webdriver.common.by import By
-
-# #     driver = webdriver.Firefox()
-# #     driver.get("http://www.python.org")
-# #     assert "Python" in driver.title
-# #     elem = driver.find_element(By.NAME, "q")
-# #     elem.clear()
-# #     elem.send_keys("pycon")
-# #     elem.send_keys(Keys.RETURN)
-# #     assert "No results found." not in driver.page_source
-# #     driver.close()

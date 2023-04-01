@@ -2,6 +2,8 @@ import pydantic
 import datetime
 import uuid
 
+from typing import List
+
 
 class Quiz(pydantic.BaseModel):
     question: str
@@ -17,3 +19,11 @@ class Answer(pydantic.BaseModel):
     created_at: datetime.datetime
     value: str
     is_correct: bool = None
+
+
+class TrivaQuestion(pydantic.BaseModel):
+    category: str
+    question: str
+    options: List[str]
+    correct_answer: str
+    correct_answer_alpha: str

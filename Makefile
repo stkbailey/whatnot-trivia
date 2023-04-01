@@ -3,3 +3,6 @@ run:
 
 format:
 	poetry run black .
+
+test:
+	poetry run dotenv run pytest tests

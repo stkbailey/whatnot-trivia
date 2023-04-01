@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "whatnot-trivia"
+name = "whatbot"
 version = "0.1.0"
 description = ""
 authors = ["Stephen Bailey <stkbailey@gmail.com>"]
 readme = "README.md"
-packages = [{include = "whatnot_trivia"}]
+packages = [{include = "whatbot"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
@@ -20,9 +20,12 @@ selenium = "^4.8.2"
 ipykernel = "^6.21.3"
 pydantic = "^1.10.6"
 ipython = "^8.11.0"
+agora-python-sdk = "^3.4.2.1"
+openai = "^0.27.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
+pytest = "^7.2.2"
 
 [build-system]
 requires = ["poetry-core"]

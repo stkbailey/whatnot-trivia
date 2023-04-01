@@ -1,26 +1,44 @@
 import json
+import os
 import streamlit
 import datetime
 import pandas
 
-# from streamlit_autorefresh import st_autorefresh
+from streamlit_autorefresh import st_autorefresh
 
-from whatnot_trivia.models import Quiz, Answer
-from whatnot_trivia.utils import *
+from whatbot.models import Quiz, Answer
+from whatbot.utils import *
+from whatbot.bot import WhatBot
+
+
+# Run the autorefresh about every N milliseconds (2 seconds) and stop
+# after it's been refreshed 100 times.
+# count = st_autorefresh(interval=2000000, limit=5, key="fizzbuzzcounter")
 
 POLL_SECONDS = 10
 
-livestream_id = streamlit.text_input(
+livestream_id = os.environ["LIVESTREAM_ID"]
+# livestream_id = streamlit.text_input(
+#     "Enter livestream id",
+#     value="b38e75f5-1f91-49a2-887c-397f8f0f5da8",
+#     key="livestream_id",
+# )
+round_name = streamlit.text_input(
     "Enter livestream id",
-    value="b38e75f5-1f91-49a2-887c-397f8f0f5da8",
-    key="livestream_id",
+    value="test-round",
+    key="round_name",
+)
+category_name = streamlit.text_input(
+    "Enter override category",
+    value=None,
+    key="category_name",
 )
 
-if "driver" not in streamlit.session_state:
-    driver = start_driver(livestream_id)
-    streamlit.session_state["driver"] = driver
-else:
-    driver = streamlit.session_state["driver"]
+# if "driver" not in streamlit.session_state:
+#     driver = start_driver(livestream_id)
+#     streamlit.session_state["driver"] = driver
+# else:
+#     driver = streamlit.session_state["driver"]
 
 if "chat" not in streamlit.session_state:
     chat = load_chat()
@@ -33,6 +51,12 @@ quiz = fetch_quiz()
 
 
 # Load for a quiz
+t = WhatBot()
+q = t.generate_trivia_question(category_name)
+streamlit.markdown(q.question)
+streamlit.markdown("\n\n".join(q.options))
+streamlit.markdown(f"Correct answer is {q.correct_answer_alpha}. {q.correct_answer}")
+
 answers = load_answers()
 chat = scrape_chat(driver, chat)
 quiz.started_at = datetime.datetime.now()
