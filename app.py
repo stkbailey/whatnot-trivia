@@ -21,10 +21,10 @@ from whatbot.bot import WhatBot
 
 # Run the autorefresh about every N milliseconds (2 seconds) and stop
 # after it's been refreshed 100 times.
-# count = st_autorefresh(interval=2000000, limit=5, key="fizzbuzzcounter")
+count = st_autorefresh(interval=50000, limit=30, key="restart", )
 
 POLL_SECONDS = 15
-WAIT_SECONDS = 5
+WAIT_SECONDS = 15
 LIVESTREAM_ID = os.environ["LIVESTREAM_ID"]
 
 if "driver" not in streamlit.session_state:
@@ -141,7 +141,7 @@ ANSWER_TEXT = f"""# Answer
 - Users with answers: {in_quiz_window.sum()}
 - Users with correct answers: {winners}
 
-{tmp_answers[['username', 'value', 'is_correct']].to_markdown(index=False)}
+{answers.loc[answers.quiz_id == question.id, ['username', 'value', 'is_correct']].to_markdown(index=False)}
 """
 container.markdown(ANSWER_TEXT)
 
