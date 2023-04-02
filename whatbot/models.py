@@ -27,3 +27,6 @@ class TrivaQuestion(pydantic.BaseModel):
     options: List[str]
     correct_answer: str
     correct_answer_alpha: str
+    id: str = uuid.uuid4().hex
+    started_at: datetime.datetime = None
+    ended_at: datetime.datetime = None

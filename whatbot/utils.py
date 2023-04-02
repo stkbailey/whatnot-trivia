@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def start_driver(livestream_id: str):
     # Replace this with the path to your Chrome WebDriver executable
-    chromedriver_path = "assets/chromedriver"
+    chromedriver_path = "db/chromedriver"
     chrome_options = Options()
     # chrome_options.add_argument("--headless")
 
@@ -39,7 +39,7 @@ def stop_driver(driver):
 
 
 def fetch_quiz():
-    bank_fname = pathlib.Path("assets/question_bank.csv")
+    bank_fname = pathlib.Path("db/question_bank.csv")
     if bank_fname.exists():
         bank_df = pandas.read_csv(bank_fname)
         s = bank_df.sample(1).iloc[0]
@@ -55,7 +55,7 @@ def fetch_quiz():
     return quiz
 
 
-def load_chat(fname="assets/chat.csv"):
+def load_chat(fname="db/chat.csv"):
     p = pathlib.Path(fname)
     if p.exists():
         df = pandas.read_csv(p)
@@ -64,11 +64,11 @@ def load_chat(fname="assets/chat.csv"):
     return df
 
 
-def write_chat(df: pandas.DataFrame, fname="assets/chat.csv"):
+def write_chat(df: pandas.DataFrame, fname="db/chat.csv"):
     df.to_csv(fname, index=False)
 
 
-def load_quizzes(fname="assets/quizzes.csv"):
+def load_quizzes(fname="db/quizzes.csv"):
     p = pathlib.Path(fname)
     if p.exists():
         df = pandas.read_csv(p)
@@ -77,14 +77,14 @@ def load_quizzes(fname="assets/quizzes.csv"):
     return df
 
 
-def write_quiz(quiz: Quiz, fname="assets/quizzes.csv"):
+def write_quiz(quiz: Quiz, fname="db/quizzes.csv"):
     quizzes = load_quizzes(fname)
     tmp = pandas.DataFrame([quiz.dict()])
     quizzes = pandas.concat([quizzes, tmp], axis=0, ignore_index=True)
     quizzes.to_csv(fname, index=False)
 
 
-def load_answers(fname="assets/answers.csv"):
+def load_answers(fname="db/answers.csv"):
     p = pathlib.Path(fname)
     if p.exists():
         df = pandas.read_csv(p)
@@ -93,7 +93,7 @@ def load_answers(fname="assets/answers.csv"):
     return df
 
 
-def write_answers(df: pandas.DataFrame, fname="assets/answers.csv"):
+def write_answers(df: pandas.DataFrame, fname="db/answers.csv"):
     df.to_csv(fname, index=False)
 
 
@@ -111,14 +111,17 @@ def get_chat_comment(div_text: str):
     return " ".join(parts[1:])
 
 
-def clear_assets():
+def clear_db():
     for ii in ["answers", "chat", "quizzes"]:
-        p = pathlib.Path(f"assets/{ii}.csv")
+        p = pathlib.Path(f"db/{ii}.csv")
         if p.exists():
             p.unlink()
 
 
-def scrape_chat(driver, chat: pandas.DataFrame):
+def scrape_chat(driver, chat: pandas.DataFrame = None):
+    if chat is None:
+        chat = pandas.DataFrame(columns=["scraped_at", "username", "chat"])
+
     cursor = chat.shape[0]
     dt = datetime.datetime.now()
     chat_divs = driver.find_elements(

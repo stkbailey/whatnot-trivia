@@ -1,4 +1,12 @@
-import json
+"""
+This app uses Streamlit to run a simple trivia game.
+
+The first run through will:
+- initialize a webdriver on a livestream
+- load previous answers for a csv file
+
+"""
+
 import os
 import streamlit
 import datetime
@@ -6,7 +14,7 @@ import pandas
 
 from streamlit_autorefresh import st_autorefresh
 
-from whatbot.models import Quiz, Answer
+from whatbot.models import Answer
 from whatbot.utils import *
 from whatbot.bot import WhatBot
 
@@ -15,79 +23,91 @@ from whatbot.bot import WhatBot
 # after it's been refreshed 100 times.
 # count = st_autorefresh(interval=2000000, limit=5, key="fizzbuzzcounter")
 
-POLL_SECONDS = 10
+POLL_SECONDS = 15
+WAIT_SECONDS = 5
+LIVESTREAM_ID = os.environ["LIVESTREAM_ID"]
 
-livestream_id = os.environ["LIVESTREAM_ID"]
-# livestream_id = streamlit.text_input(
-#     "Enter livestream id",
-#     value="b38e75f5-1f91-49a2-887c-397f8f0f5da8",
-#     key="livestream_id",
+if "driver" not in streamlit.session_state:
+    driver = start_driver(LIVESTREAM_ID)
+    streamlit.session_state["driver"] = driver
+    streamlit.session_state["url"] = driver.command_executor._url       #"http://127.0.0.1:60622/hub"
+    streamlit.session_state["session_id"] = driver.session_id           #'4e167f26-dc1d-4f51-a207-f761eaf73c31'
+else:
+    driver = streamlit.session_state["driver"]
+
+# round_name = streamlit.text_input(
+#     "Enter Game Round Identifier",
+#     value=uuid.uuid4().hex,
+#     key="round_name",
 # )
-round_name = streamlit.text_input(
-    "Enter livestream id",
-    value="test-round",
-    key="round_name",
-)
+
+# DEBUG_TEXT = f"""
+# ## Debug Logs
+
+# Question: {question.question}
+
+# Answers:
+# {options_str}
+
+# Correct answer is {question.correct_answer_alpha}. {question.correct_answer}
+# """
+# streamlit.markdown(DEBUG_TEXT)
+
+
+# initialize the chat logs
+answers = load_answers()
+chat = scrape_chat(driver)
+
+# select category
 category_name = streamlit.text_input(
-    "Enter override category",
+    "Enter category",
     value=None,
     key="category_name",
 )
 
-# if "driver" not in streamlit.session_state:
-#     driver = start_driver(livestream_id)
-#     streamlit.session_state["driver"] = driver
-# else:
-#     driver = streamlit.session_state["driver"]
+# Create a container to hold the question
+container = streamlit.empty()
 
-if "chat" not in streamlit.session_state:
-    chat = load_chat()
-    streamlit.session_state["chat"] = chat
-else:
-    chat = streamlit.session_state["chat"]
-
-pressed = streamlit.button("Get quiz")
-quiz = fetch_quiz()
-
-
-# Load for a quiz
+# Load a Question
 t = WhatBot()
-q = t.generate_trivia_question(category_name)
-streamlit.markdown(q.question)
-streamlit.markdown("\n\n".join(q.options))
-streamlit.markdown(f"Correct answer is {q.correct_answer_alpha}. {q.correct_answer}")
+question = t.generate_trivia_question(category_name)
+options_str= '\n- ' + '\n- '.join(question.options)
 
-answers = load_answers()
-chat = scrape_chat(driver, chat)
-quiz.started_at = datetime.datetime.now()
+# Print the quiz
+question.started_at = datetime.datetime.now()
+QUESTION_TEXT = f"""# Question
 
-# Write the quiz
-streamlit.text(f"Livestream ID {livestream_id}")
-streamlit.text(f"Quiz ID {quiz.quiz_id}")
-streamlit.text(quiz.question)
-streamlit.text(f"Quiz started at {quiz.started_at}")
+**category:** {question.category}
+
+**{question.question}**
+
+{options_str}
+
+*Chat in only with the letter of the correct answer.*
+"""
+container.markdown(QUESTION_TEXT)
 
 # poll for answers
 for ii in range(POLL_SECONDS):
     # streamlit.markdown(f"Polling for answers: {ii}")
     chat = scrape_chat(driver, chat)
     time.sleep(1)
-write_chat(chat)
+
+question.ended_at = datetime.datetime.now()
 
 # save
-quiz.ended_at = datetime.datetime.now()
-in_quiz_window = (pandas.to_datetime(chat.scraped_at) >= quiz.started_at) & (
-    pandas.to_datetime(chat.scraped_at) <= quiz.ended_at
-)
+after_start = pandas.to_datetime(chat.scraped_at) >= question.started_at
+before_end = pandas.to_datetime(chat.scraped_at) <= question.ended_at
+in_quiz_window = after_start & before_end
+
 answers_list = []
 for ii, s in chat.loc[in_quiz_window].iterrows():
     qa = Answer(
-        quiz_id=quiz.quiz_id,
+        quiz_id=question.id,
         username=s.username,
         created_at=s.scraped_at,
         value=s.chat,
-        is_correct="the" in str(s.chat).lower(),
-        # is_correct=s.chat.lower() == quiz.answer.lower(),
+        is_correct=question.correct_answer_alpha.lower() == str(s.chat).lower(),
     )
     if s.username not in map(lambda x: x.username, answers_list):
         answers_list.append(qa)
@@ -95,21 +115,40 @@ for ii, s in chat.loc[in_quiz_window].iterrows():
 tmp_answers = pandas.DataFrame([qa.dict() for qa in answers_list])
 answers = pandas.concat([answers, tmp_answers], axis=0, ignore_index=True)
 write_answers(answers)
-write_quiz(quiz)
+write_quiz(question)
 
-streamlit.markdown("## Answers during chat")
-streamlit.dataframe(tmp_answers)
 
 # Show results
 winners = answers.loc[
-    (answers.quiz_id == quiz.quiz_id) & (answers.is_correct)
+    (answers.quiz_id == question.id) & (answers.is_correct)
 ].username.tolist()
 score_totals = (
     answers.groupby(["username"])
     .agg({"quiz_id": "count", "is_correct": "sum"})
     .reset_index()
 )
-streamlit.markdown("## Summary")
-streamlit.text(f"Users with answers: {in_quiz_window.sum()}")
-streamlit.text(f"Users with correct answers: {winners}")
-streamlit.dataframe(score_totals)
+score_totals["attempts"] = score_totals["quiz_id"]
+score_totals["score"] = score_totals["is_correct"]
+score_totals["rank"] = score_totals.score.rank(method="first", ascending=False)
+
+
+ANSWER_TEXT = f"""# Answer
+
+{question.correct_answer_alpha}. {question.correct_answer}
+
+## Chat Scoreboard
+
+- Users with answers: {in_quiz_window.sum()}
+- Users with correct answers: {winners}
+
+{tmp_answers[['username', 'value', 'is_correct']].to_markdown(index=False)}
+"""
+container.markdown(ANSWER_TEXT)
+
+
+time.sleep(WAIT_SECONDS)
+RANKING_TEXT = f"""## Running Totals
+
+{score_totals[["username", "attempts", "score", "rank"]].sort_values(by="rank", ascending=True).to_markdown(index=False)}
+"""
+container.markdown(RANKING_TEXT)
